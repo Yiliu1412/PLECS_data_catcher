@@ -3,7 +3,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-🔌 **PLECS 批量仿真与数据提取工具** - 用于电力电子仿真的参数扫描和自动化数据采集
+🔌 PLECS 电力电子仿真参数扫描与数据自动采集工具（基于 XML-RPC）
 
 ---
 
@@ -161,4 +161,5 @@ sim_data.csv
 
 - [PLECS](https://www.plexim.com/) - 专业的电力电子仿真软件
 - 感谢所有贡献者的支持
+
 
