@@ -34,10 +34,12 @@ if not MODEL_FILE.exists():
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
 CSV_OUTPUT_FILE = OUTPUT_DIR / "sim_data.csv"
 
-# 参数扫描范围（根据你的模型修改）
+# 参数扫描范围
 SCAN_PARAMETERS = {
     "Udc": [350, 400, 450],              # DC 总线电压 (V)
     "f_sw": [15000, 18000, 21000],      # 开关频率 (Hz)
+	#"R": [8, 10, 12],                    # 负载电阻 (Ohm)
+	"environ_T": [25, 40, 55],           # 环境温度 (degC)
 }
 
 # 寻找 CSV 的候选位置
