@@ -38,7 +38,7 @@ CSV_OUTPUT_FILE = OUTPUT_DIR / "sim_data.csv"
 SCAN_PARAMETERS = {
     "Udc": [350, 400, 450],              # DC 总线电压 (V)
     "f_sw": [15000, 18000, 21000],      # 开关频率 (Hz)
-	#"R": [8, 10, 12],                    # 负载电阻 (Ohm)
+	#"R": [8, 10, 12],                    # 电网侧电阻 (Ohm)
 	"environ_T": [25, 40, 55],           # 环境温度 (degC)
 }
 
