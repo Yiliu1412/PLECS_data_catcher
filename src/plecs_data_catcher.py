@@ -16,7 +16,7 @@ import pathlib
 import re
 import shutil
 import xmlrpc.client
-from typing import Any
+from typing import Any, Callable
 import itertools
 
 
@@ -33,14 +33,6 @@ if not MODEL_FILE.exists():
 		MODEL_FILE = fallback_model
 OUTPUT_DIR = PROJECT_ROOT / "outputs"
 CSV_OUTPUT_FILE = OUTPUT_DIR / "sim_data.csv"
-
-# 参数扫描范围
-SCAN_PARAMETERS = {
-    "Udc": [200, 300, 400],              # DC 总线电压 (V)
-    "f_sw": [10000, 16000, 18000, 20000],      # 开关频率 (Hz)
-	"environ_T": [25, 40, 60],           # 环境温度 (degC)
-	"Igd_ref": [30, 40, 50, 60],             # 电流d轴参考值 (A)
-}
 
 # 寻找 CSV 的候选位置
 CSV_SOURCE_CANDIDATES = [
@@ -185,9 +177,15 @@ def copy_csv_for_run(run_idx: int, params: dict[str, Any]) -> pathlib.Path | Non
 	return target
 
 
-def run_param_sweep(proxy: xmlrpc.client.ServerProxy) -> int:
+def run_param_sweep(
+	proxy: xmlrpc.client.ServerProxy,
+	scan_parameters: dict[str, list[Any]] | None,
+	on_csv_collected: Callable[[pathlib.Path, int, dict[str, Any]], None] | None = None,
+) -> int:
 	"""执行参数扫描、仿真和原始 CSV 数据采集。"""
-	param_grid = build_param_grid(SCAN_PARAMETERS)
+	if scan_parameters is None:
+		scan_parameters = {}
+	param_grid = build_param_grid(scan_parameters)
 	print(f"[INFO] 参数组合数: {len(param_grid)}")
 
 	collected_count = 0
@@ -200,6 +198,8 @@ def run_param_sweep(proxy: xmlrpc.client.ServerProxy) -> int:
 			csv_path = copy_csv_for_run(idx, params)
 			if csv_path is not None:
 				collected_count += 1
+				if on_csv_collected is not None:
+					on_csv_collected(csv_path, idx, params)
 		else:
 			print(f"[WARN] 本轮仿真失败，跳过数据采集")
 
@@ -264,7 +264,7 @@ def main() -> int:
 	if proxy is None:
 		return 1
 
-	code = run_param_sweep(proxy)
+	code = run_param_sweep(proxy, None)
 
 	print("\n[INFO] 输出文件汇总:")
 	for p in sorted(OUTPUT_DIR.glob("*")):

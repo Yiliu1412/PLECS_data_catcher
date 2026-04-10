@@ -1,16 +1,17 @@
 # PLECS Data Catcher
 
-🔌 PLECS 电力电子仿真参数扫描与数据自动采集工具（基于 XML-RPC）
+🔌 PLECS 电力电子仿真参数扫描、数据自动采集与逐次绘图工具（基于 XML-RPC）
 
 ## 项目简介
 
-自动化 PLECS 仿真的 Python 工具，支持多维参数扫描、工程数据采集和结果管理。
+自动化 PLECS 仿真的 Python 工具，支持多维参数扫描、工程数据采集、逐次结果绘图和文件管理。
 
 **核心功能**
 - 批量参数扫描（电压、频率、温度等多维空间）
 - 通过 XML-RPC 自动调用 PLECS 仿真引擎
 - 自动采集并重命名 CSV 数据
 - 为每组参数生成独立数据文件
+- 每次采集完成后立即绘制对应曲线图
 
 ## 快速开始
 
@@ -33,8 +34,8 @@ cd PLCES_data_catcher
 python -m venv .venv
 .venv\Scripts\activate  # Windows
 
-# 仅运行采集脚本（无需额外依赖）
-python src/plecs_data_catcher.py
+# 运行主入口（采集 + 逐次绘图）
+python main.py
 
 # 完整功能（数据分析）
 pip install -r requirements.txt
@@ -63,33 +64,46 @@ print(proxy.system.listMethods())
 ### 基本用法
 
 ```bash
-python src/plecs_data_catcher.py
+python main.py
 ```
 
 ### 配置参数扫描
 
-编辑 [src/plecs_data_catcher.py](src/plecs_data_catcher.py) 中的参数配置：
+编辑 [main.py](main.py) 中的参数配置：
 
 ```python
 SCAN_PARAMETERS = {
-    "Udc": [350, 400, 450],              # DC 母线电压 (V)
-    "f_sw": [15000, 18000, 21000],      # 开关频率 (Hz)
-    "environ_T": [25, 40, 55],           # 环境温度 (°C)
+    "Udc": [200, 300, 400],
+    "f_sw": [10000, 16000, 18000, 20000],
+    "environ_T": [25, 40, 60],
+    "Igd_ref": [30, 40, 50, 60],
 }
 ```
 
-**自动调整模型文件路径**：
-```python
-MODEL_FILE = PROJECT_ROOT / "your_model.plecs"
+### 绘图行为
+
+每次仿真完成并采集到 CSV 后，程序会立刻调用可视化脚本生成对应 PNG 图像。
+
+- 输入 CSV：`outputs/sim_data_run_XXX__*.csv`
+- 输出图片：与 CSV 同名，仅扩展名改为 `.png`
+- 时间范围：默认只显示 `0 - 5 s`
+
+如果需要单独绘图，也可以直接运行：
+
+```bash
+python src/plecs_visualizer.py --csv-file outputs/sim_data_run_001__Igd_ref_30__Udc_200__environ_T_25__f_sw_10000.csv
 ```
 
 ## 项目结构
 
 ```
 PLCES_data_catcher/
+├── main.py                       # 入口：配置参数、运行仿真、逐次绘图
 ├── src/plecs_data_catcher.py      # 主脚本
+├── src/plecs_visualizer.py        # 单文件结温绘图脚本
 ├── outputs/                        # 输出数据目录
 │   ├── sim_data_run_*.csv         # 仿真结果
+│   ├── sim_data_run_*.png         # 对应图像
 │   └── sim_data.csv               # 最新数据副本
 ├── ref/                           # 参考文档
 ├── requirements.txt               # Python 依赖
@@ -99,11 +113,17 @@ PLCES_data_catcher/
 
 ## 输出文件格式
 
-CSV 文件命名规则：`sim_data_run_{序号}__{参数1}_{值1}__{参数2}_{值2}__.csv`
+CSV 文件命名规则：`sim_data_run_{序号}__{参数1}_{值1}__{参数2}_{值2}.csv`
 
 示例：
 - `sim_data_run_001__Udc_350__environ_T_25__f_sw_15000.csv`
 - `sim_data_run_027__Udc_450__environ_T_55__f_sw_21000.csv`
+
+图片文件命名规则：与 CSV 完全同名，只把后缀改为 `.png`
+
+示例：
+- `sim_data_run_001__Udc_350__environ_T_25__f_sw_15000.png`
+- `sim_data_run_027__Udc_450__environ_T_55__f_sw_21000.png`
 
 
 ## 参考资源
