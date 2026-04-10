@@ -15,6 +15,7 @@ from __future__ import annotations
 import pathlib
 import re
 import shutil
+import time
 import xmlrpc.client
 from typing import Any, Callable
 import itertools
@@ -47,10 +48,13 @@ CSV_SOURCE_CANDIDATES = [
 def ensure_output_dir() -> None:
 	"""创建输出目录，并清空旧文件。"""
 	OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-	# 清空目录中的 CSV 文件
-	for csv_file in OUTPUT_DIR.glob("sim_data_*.csv"):
-		csv_file.unlink()
-		print(f"[INFO] 已删除旧文件: {csv_file.name}")
+	# 全量清空目录中的所有内容
+	for item in OUTPUT_DIR.iterdir():
+		if item.is_file() or item.is_symlink():
+			item.unlink()
+		elif item.is_dir():
+			shutil.rmtree(item)
+		print(f"[INFO] 已删除旧文件: {item.name}")
 	print(f"[INFO] 输出目录: {OUTPUT_DIR.resolve()}")
 
 
@@ -123,18 +127,23 @@ def build_opt_struct(params: dict[str, Any]) -> dict[str, Any]:
 	}
 
 
-def run_simulation_once(proxy: xmlrpc.client.ServerProxy, params: dict[str, Any]) -> bool:
+def run_simulation_once(proxy: xmlrpc.client.ServerProxy, params: dict[str, Any]) -> tuple[bool, float]:
 	"""执行一次仿真，参数通过 optStruct 传递。"""
 	opt_struct = build_opt_struct(params)
 	# 使用模型名称（不带路径和扩展名）
 	model_name = MODEL_FILE.stem
+	start_time = time.perf_counter()
 	try:
 		result = call_method(proxy, "plecs.simulate", model_name, opt_struct)
+		elapsed = time.perf_counter() - start_time
 		print(f"[OK] 仿真完成，返回: {result}")
-		return True
+		print(f"[INFO] 仿真耗时: {elapsed:.4f} 秒")
+		return True, elapsed
 	except Exception as e:
+		elapsed = time.perf_counter() - start_time
 		print(f"[WARN] 仿真调用失败: {e}")
-		return False
+		print(f"[INFO] 仿真耗时: {elapsed:.4f} 秒")
+		return False, elapsed
 
 
 def find_latest_csv() -> pathlib.Path | None:
@@ -180,6 +189,7 @@ def copy_csv_for_run(run_idx: int, params: dict[str, Any]) -> pathlib.Path | Non
 def run_param_sweep(
 	proxy: xmlrpc.client.ServerProxy,
 	scan_parameters: dict[str, list[Any]] | None,
+	on_run_completed: Callable[[int, dict[str, Any], float, bool], None] | None = None,
 	on_csv_collected: Callable[[pathlib.Path, int, dict[str, Any]], None] | None = None,
 ) -> int:
 	"""执行参数扫描、仿真和原始 CSV 数据采集。"""
@@ -193,7 +203,9 @@ def run_param_sweep(
 		print(f"\n[INFO] ===== Run {idx}/{len(param_grid)} =====")
 		print(f"[INFO] 参数: {params}")
 
-		sim_ok = run_simulation_once(proxy, params)
+		sim_ok, elapsed = run_simulation_once(proxy, params)
+		if on_run_completed is not None:
+			on_run_completed(idx, params, elapsed, sim_ok)
 		if sim_ok:
 			csv_path = copy_csv_for_run(idx, params)
 			if csv_path is not None:

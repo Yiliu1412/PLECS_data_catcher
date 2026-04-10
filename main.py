@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.plecs_data_catcher import connect_plecs, ensure_output_dir, run_param_sweep
+from src.plecs_data_catcher import MODEL_FILE, connect_plecs, ensure_output_dir, run_param_sweep
+from src.plecs_run_timer import RunTimingRecorder
 from src.plecs_visualizer import OUTPUT_DIR, plot_single_file
 
 # ============================================================================
@@ -48,9 +49,16 @@ def main() -> int:
     if proxy is None:
         return 1
 
+    recorder = RunTimingRecorder(
+        output_dir=OUTPUT_DIR,
+        model_name=MODEL_FILE.stem,
+        parameter_names=list(SCAN_PARAMETERS.keys()),
+    )
+
     return run_param_sweep(
         proxy,
         scan_parameters=SCAN_PARAMETERS,
+        on_run_completed=lambda run_idx, params, elapsed, success: recorder.record(run_idx, params, elapsed, success),
         on_csv_collected=plot_after_collect,
     )
 
